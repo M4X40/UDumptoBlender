@@ -1,5 +1,5 @@
 PSKtoFBXImporter
-%%%%%%%%%
+%%%%%%%%%%%%%%%%
 
 Fantastic Importer for PSK to FBX in Blender 3D v3.0.0.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
