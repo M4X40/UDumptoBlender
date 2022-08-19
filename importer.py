@@ -11,17 +11,15 @@
 ##################
 deleteAllObjects = True
 # Change to false if all objects in collection should be kept upon nunning script. (e.g. Camera, Cube, Light)
-autoExport = True
-# Change to false if the export window should not show up automatically after importing.
 workingDir = "D:\\C_Docs\\ResilioSync\\Imports\\UE\\Tools\\udump\\Dump\\"
 # Change to your dump (DO NOT set inside of UModelExport).
-autoExport = True
-# Change to false if you want to manually export
-exportDir =  "C:\\Users\\maxst\\Documents\\"
+autoExport = False
+# Change to true if you want to automatically export
+exportDir =  "C:\\Users\\user\\Documents\\"
 # Change to the path you want the file to export to. If file doesn't show up, export manually.
 # NOTE: REQUIRED autoExport TO BE SET TO True. INCLUDE \\ AT THE END
 scaling = 1
-# Change to the scale (XYZ) you need. Only need 1 number. 
+# Change to the scale (XYZ) you need. Only need one number number.
 
 #################
 ##   Imports   ##
@@ -111,6 +109,7 @@ def main():
         print("Found and deleted InvertedSphere")
     except Exception:
         print(f"InvertedSphere Not Found, Continuing.")
+        
     
     bpy.ops.object.select_all(action='SELECT')
     for ob in bpy.context.selected_objects:
@@ -119,9 +118,9 @@ def main():
             bpy.ops.mesh.vertex_color_remove()
         bpy.ops.object.shade_smooth()
     
-    print("Finished Importing! Attempting Auto Export.")
-    
-    export()
+    if autoExport == True:
+        print("Finished Importing! Attempting Auto Export.")
+        export()
 
 # Export Process. Tied to autoExport
 def export():
