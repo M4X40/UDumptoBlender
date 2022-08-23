@@ -11,15 +11,25 @@
 ##################
 deleteAllObjects = True
 # Change to false if all objects in collection should be kept upon nunning script. (e.g. Camera, Cube, Light)
-workingDir = "D:\\C_Docs\\ResilioSync\\Imports\\UE\\Tools\\udump\\Dump\\"
+workingDir = "D:\\umodel\\Dump\\"
 # Change to your dump (DO NOT set inside of UModelExport).
+# NOTE: INCLUDE \\ AT THE END
 autoExport = False
 # Change to true if you want to automatically export
-exportDir =  "C:\\Users\\user\\Documents\\"
+exportDir =  "C:\\Users\\user\\Documents\\Dump\\export\\"
 # Change to the path you want the file to export to. If file doesn't show up, export manually.
 # NOTE: REQUIRED autoExport TO BE SET TO True. INCLUDE \\ AT THE END
 scaling = 1
 # Change to the scale (XYZ) you need. Only need one number number.
+texConvert = True
+# Change to true if you want your textures to be converted to a different format.
+# NOTE: THIS WILL TAKE TIME DEPENDING ON YOUR DUMP (a small map took around 1.5 minutes)
+texExt = "tga"
+# Change to your texture extension if your dump uses anything other than Targa for textures.
+# NOTE: REQUIRED texConvert TO BE SET TO True.
+texExtNew = "png"
+# Change to the texture extension you want your textures to become.
+# NOTE: REQUIRED texConvert TO BE SET TO True.
 
 #################
 ##   Imports   ##
@@ -35,6 +45,7 @@ import json
 from random import randint
 import threading
 from pathlib import Path
+from PIL import Image
 
 ###################
 ##   Functions   ##
@@ -93,7 +104,8 @@ def main():
     for element in nonImportedObjects:
         textfile.write(element + "\n")
     textfile.close()
-    
+
+    # Delete SkySphere
     try:
         bpy.ops.object.select_all(action='DESELECT')
         bpy.data.objects['SM_SkySphere.mo'].select_set(True)
@@ -101,7 +113,8 @@ def main():
         print("Found and deleted SkySphere")
     except Exception:
         print(f"SkySphere Not Found, Trying InvertedSphere.")
-    
+
+    # Delete InvertedSphere
     try:
         bpy.ops.object.select_all(action='DESELECT')
         bpy.data.objects['MOD_InvertedSphere.mo'].select_set(True)
@@ -110,14 +123,36 @@ def main():
     except Exception:
         print(f"InvertedSphere Not Found, Continuing.")
         
-    
+    # Shade Smooth / Delete VCOLS
     bpy.ops.object.select_all(action='SELECT')
     for ob in bpy.context.selected_objects:
         bpy.context.view_layer.objects.active = ob
         while len(ob.data.vertex_colors) > 0:
             bpy.ops.mesh.vertex_color_remove()
         bpy.ops.object.shade_smooth()
-    
+
+    # texConvert
+    if texConvert == True:
+        CWD = os.getcwd()
+
+        for root, dirs, files in os.walk(workingDir):
+            for file in files:
+                if(file.endswith(f".{texExt}")):
+                    path = os.path.join(root,file)
+
+                    path = path.replace('\\', r'\\')
+                    root2 = root.replace('\\', r'\\') + r'\\'
+                    base = os.path.splitext(file)[0]
+
+                    os.chdir(root2)
+
+                    text = Image.open(file)
+                    text.save(f'{root2}{base}.{texExtNew}')
+                    os.remove(path)
+
+                    os.chdir(CWD)
+
+    # autoExport Call
     if autoExport == True:
         print("Finished Importing! Attempting Auto Export.")
         export()
