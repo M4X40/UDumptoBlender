@@ -1,7 +1,7 @@
 UModeltoBlender | Subscripts
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Fantastic Importer for PSK to FBX in Blender 3D v3.0.0.
+Fantastic Importer for UModel dumps to Blender 3D v3.1.0.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 :Script Version:    1.2.0
