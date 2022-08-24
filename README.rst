@@ -1,4 +1,4 @@
-UModeltoFBXImporter
+UModeltoBlender
 %%%%%%%%%%%%%%%%
 
 Fantastic Importer for UModel dumps to Blender 3D v3.1.0.
