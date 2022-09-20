@@ -1,57 +1,59 @@
-############################################################################################
-##                                                                                        ##
-##   UModel Export to Blender | Modified by M4X4#6494 at Gator Games | discord.gg/gator   ##
-##                                                                                        ##
-############################################################################################
+#  ╭─────────────────────────────────────────╮
+#  │ UDump to Blender                        │
+#  │                                         │
+#  │ M4X4#6494, zwei#0001 • discord.gg/gator │
+#  ╰─────────────────────────────────────────╯
 
-# ==================================================================================== #
+#  ╶───────────────────────────────────────────
 
-##################
-##   Settings   ##
-##################
-deleteAllObjects = True
-# Change to false if all objects in collection should be kept upon nunning script. (e.g. Camera, Cube, Light)
-workingDir = "D:\\umodel\\Dump\\"
-# Change to your dump (DO NOT set inside of UModelExport).
-# NOTE: INCLUDE \\ AT THE END
-autoExport = False
-# Change to true if you want to automatically export
-exportDir =  "C:\\Users\\user\\Documents\\Dump\\export\\"
-# Change to the path you want the file to export to. If file doesn't show up, export manually.
-# NOTE: REQUIRED autoExport TO BE SET TO True. INCLUDE \\ AT THE END
-scaling = 1
-# Change to the scale (XYZ) you need. Only need one number number.
-texConvert = True
-# Change to true if you want your textures to be converted to a different format.
-# NOTE: THIS WILL TAKE TIME DEPENDING ON YOUR DUMP (a small map took around 1.5 minutes)
-texExt = "tga"
-# Change to your texture extension if your dump uses anything other than Targa for textures.
-# NOTE: REQUIRED texConvert TO BE SET TO True.
-texExtNew = "png"
-# Change to the texture extension you want your textures to become.
-# NOTE: REQUIRED texConvert TO BE SET TO True.
+#  ╭──────────╮
+#  │ Settings │
+#  ╰──────────╯
 
-#################
-##   Imports   ##
-#################
-import bpy
-from bpy import *
-import json
+DumpDirectory = "D:\\umodel\\Dump\\"
+DeleteObjects = True
+ConvertTextures = True
+OldTextureExtension = "tga"
+NewTextureExtension = "png"
+
+#  ╶─────────────────────────────────────────╴
+
+#  ╭─────────╮
+#  │ Imports │
+#  ╰─────────╯
+
 import os
-import time
-from io_import_scene_unreal_psa_psk_280 import pskimport
-from math import *
+import bpy
+import PIL
 import json
-from random import randint
+import time
+import json
+import shutil
 import threading
+from io_import_scene_unreal_psa_psk_280 import pskimport
+from random import randint
 from pathlib import Path
 from PIL import Image
+from math import *
+from bpy import *
 
-###################
-##   Functions   ##
-###################
+#  ╶─────────────────────────────────────────╴
 
-# Tied to deleteAllObjects
+#  ╭───────────╮
+#  │ Variables │
+#  ╰───────────╯
+successfulObjects = 0
+failedObjects = 0
+nonImportedObjects = []
+pskObjectCache = {}
+
+#  ╶─────────────────────────────────────────╴
+
+#  ╭───────────╮
+#  │ Functions │
+#  ╰───────────╯
+
+# Tied to DeleteObjects
 def removeAll():
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.delete()
@@ -73,34 +75,43 @@ def createObject(jsonData):
     objectType = jsonData["type"]
     if(objectType=="mesh"):
         path = jsonData["path"]
-        path=path.split('.')[0]
-        path=workingDir+"UmodelExport"+path
-        if(Path(path+".pskx").is_file()):
-            path=path+".pskx"
-        elif(Path(path+".psk").is_file()):
-            path=path+".psk"
+
+        path = path.split('.')[0]
+
+        path = DumpDirectory+"UmodelExport"+path
+
+        if(Path(path + ".pskx").is_file()):
+            path = path + ".pskx"
+            ObjectExists = True
+        elif(Path(path + ".psk").is_file()):
+            path = path + ".psk"
+            ObjectExists = True
         else:
-            if path != workingDir+"UmodelExportNone":
-                raise ValueError("Can't find mesh file "+path)
-        importMesh(path)
-        
-        imported = bpy.context.active_object
-        location = jsonData["position"]
-        rotation = jsonData["rotation"]
-        scale = jsonData["scale"]
-        imported.location = (fixNan(location["X"])/100,fixNan(location["Y"])/100*-1,fixNan(location["Z"]/100))
-        imported.rotation_euler = (radians(fixNan(rotation["Z"])),radians(fixNan(rotation["X"])*-1),radians(fixNan(rotation["Y"])*-1))
-        imported.scale = (scaling,scaling,scaling)
-        
+            if path != DumpDirectory+"UmodelExportNone":
+                ObjectExists = False
+        if ObjectExists:
+            importMesh(path)
+
+            imported = bpy.context.active_object
+
+            location = jsonData["position"]
+            rotation = jsonData["rotation"]
+
+            scale = jsonData["scale"]
+
+            imported.location = (fixNan(location["X"])/100,fixNan(location["Y"])/100*-1,fixNan(location["Z"]/100))
+            imported.rotation_euler = (radians(fixNan(rotation["Z"])),radians(fixNan(rotation["X"])*-1),radians(fixNan(rotation["Y"])*-1))
+            imported.scale = (1,1,1)
+
 # Main data handler
-def main():  
-    jsonFileData = json.loads((open(workingDir+"dump.json","r").read())) 
+def main():
+    jsonFileData = json.loads((open(DumpDirectory+"dump.json","r").read())) 
     listLen = len(jsonFileData)
     for i in range(0,listLen):
         createObject(jsonFileData[i])
         print("Imported object "+str(i)+"/"+str(listLen))
 
-    textfile = open(workingDir+"brokenObjects.txt", "w")
+    textfile = open(DumpDirectory+"brokenObjects.txt", "w")
     for element in nonImportedObjects:
         textfile.write(element + "\n")
     textfile.close()
@@ -122,22 +133,35 @@ def main():
         print("Found and deleted InvertedSphere")
     except Exception:
         print(f"InvertedSphere Not Found, Continuing.")
-        
-    # Shade Smooth / Delete VCOLS
+
+    #Set Unknown Objects to 1/10 Scale
+    try:
+        bpy.ops.object.select_all(action='DESELECT')
+        bpy.data.objects['Cube.mo'].scale = (0.1, 0.1, 0.1)
+    except Exception:
+        print("No Unknown Cubes, trying Spheres")
+    try:
+        bpy.ops.object.select_all(action='DESELECT')
+        bpy.data.objects['Sphere.mo'].scale = (0.1, 0.1, 0.1)
+    except Exception:
+        print("No Unknown Spheres, continueing.")
+
+    # Shade Smooth / Delete VCOLS / Nodes
     bpy.ops.object.select_all(action='SELECT')
     for ob in bpy.context.selected_objects:
+        ob.active_material.use_nodes = True
         bpy.context.view_layer.objects.active = ob
         while len(ob.data.vertex_colors) > 0:
             bpy.ops.mesh.vertex_color_remove()
         bpy.ops.object.shade_smooth()
 
-    # texConvert
-    if texConvert == True:
+    # ConvertTextures
+    if ConvertTextures == True:
         CWD = os.getcwd()
 
-        for root, dirs, files in os.walk(workingDir):
+        for root, dirs, files in os.walk(DumpDirectory):
             for file in files:
-                if(file.endswith(f".{texExt}")):
+                if(file.endswith(f".tga")):
                     path = os.path.join(root,file)
 
                     path = path.replace('\\', r'\\')
@@ -147,37 +171,133 @@ def main():
                     os.chdir(root2)
 
                     text = Image.open(file)
-                    text.save(f'{root2}{base}.{texExtNew}')
+                    text.save(f'{root2}{base}.png')
                     os.remove(path)
+
+                    copyPath = path.split(".tga")
+                    src = f"{copyPath[0]}.png"
+                    if not os.path.exists(f'{DumpDirectory}\\Textures\\'):
+                        os.mkdir(f'{DumpDirectory}\\Textures\\')
+                    dest = f"{DumpDirectory}\\Textures\\{base}.png"
+                    shutil.copyfile(src,dest)
 
                     os.chdir(CWD)
 
-    # autoExport Call
-    if autoExport == True:
-        print("Finished Importing! Attempting Auto Export.")
-        export()
+    # AutoTexture
+    for i in bpy.data.materials:
+        mat = str(i)
+        mat = mat.split('<bpy_struct, Material("')
+        mat = mat[1].split('") at ')
+        mat = mat[0]
 
-# Export Process. Tied to autoExport
-def export():
-    try:
-        os.chdir(exportDir)
-        bpy.ops.export_scene.fbx(filepath=f"{exportDir}untitled.fbx", bake_anim=True)
-    except Exception as e:
-        print(f"Export Failed: \n{e}\n")
+    for root, dirs, files in os.walk(DumpDirectory):
+        for file in files:
 
-###################
-##   Variables   ##
-###################
-successfulObjects = 0
-failedObjects = 0
-nonImportedObjects = []
-pskObjectCache = {}
+            if(file.endswith(f".mat")):
 
-###############
-##   Start   ##
-###############
+                path = os.path.join(root,file)
+                path = path.replace('\\', r'\\')
+
+                if not os.path.exists(f'{DumpDirectory}\\Materials\\'):
+                    os.mkdir(f'{DumpDirectory}\\Materials\\')
+
+                dest = f"{DumpDirectory}\\Materials\\{file}"
+
+                try:
+                    shutil.copyfile(path,dest)
+                except Exception as e:
+                    print("Same File Error, skipping")
+
+    texlist = {}
+
+    for root, dirs, files in os.walk(f"{DumpDirectory}\\Materials\\"):
+        for file in files:
+            os.chdir(root)
+
+            path = os.path.join(root,file)
+            path = path.replace('\\', r'\\')
+            base = os.path.splitext(file)[0]
+
+            with open(file) as f:
+                for line in f.readlines():
+                    if 'Diffuse=' in line:
+                        texPath = line.split('Diffuse=')
+                        texPath = texPath[1]
+                        texlist["Diffuse"] = texPath
+                    if 'Normal=' in line:
+                        texPath = line.split('Normal=')
+                        texPath = texPath[1]
+                        texlist["Normal"] = texPath
+                    if 'Roughness=' in line:
+                        texPath = line.split('Roughness=')
+                        texPath = texPath[1]
+                        texlist['Roughness'] = texPath
+                    if 'Metallic=' in line:
+                        texPath = line.split('Metallic=')
+                        texPath = texPath[1]
+                        texlist['Metallic'] = texPath
+                    if 'Other[0]=' in line:
+                        if 'OcclusionRoughnessMetallic' in line:
+                            texPath = line.split('Other[0]=')
+                            texPath = texPath[1]
+                            texlist["Other0"] = texPath
+
+            for mat in bpy.data.materials:
+                if mat.name == base:
+                        mat.use_nodes = True
+                        mat_nodes = mat.node_tree.nodes
+                        mat_links = mat.node_tree.links
+
+                        ColorNode = mat_nodes.new('ShaderNodeTexImage')
+                        textPath = DumpDirectory.replace('\\', '/')
+                        ColorNode.image = bpy.data.images.load(filepath = "".join(f"{textPath}Textures/{texlist['Diffuse']}.png".split()))
+                        ColorNode.location = (-400,500)
+                        mat_links.new(ColorNode.outputs["Color"], mat_nodes.get("Principled BSDF").inputs["Base Color"])
+
+                        NormalMap = mat_nodes.new("ShaderNodeNormalMap")
+
+                        NormalNode = mat_nodes.new('ShaderNodeTexImage')
+                        textPath = DumpDirectory.replace('\\', '/')
+                        NormalNode.image = bpy.data.images.load(filepath = "".join(f"{textPath}Textures/{texlist['Normal']}.png".split()))
+                        NormalNode.location = (-475,-375)
+                        NormalMap.location = (-175,-275)
+                        mat_links.new(NormalNode.outputs["Color"], NormalMap.inputs["Color"])
+                        mat_links.new(NormalMap.outputs["Normal"], mat_nodes.get("Principled BSDF").inputs["Normal"])
+                        if "Roughness" in texlist.keys():
+                            RoughNode = mat_nodes.new('ShaderNodeTexImage')
+                            textPath = DumpDirectory.replace('\\', '/')
+                            RoughNode.image = bpy.data.images.load(filepath = "".join(f"{textPath}Textures/{texlist['Roughness']}.png".split()))
+                            RoughNode.image.colorspace_settings.name = "Non-Color"
+                            RoughNode.location = (-300,0)
+                            mat_links.new(RoughNode.outputs["Color"], mat_nodes.get("Principled BSDF").inputs["Roughness"])
+                        if "Metallic" in texlist.keys():
+                            MetalNode = mat_nodes.new('ShaderNodeTexImage')
+                            textPath = DumpDirectory.replace('\\', '/')
+                            MetalNode.image = bpy.data.images.load(filepath = "".join(f"{textPath}Textures/{texlist['Metallic']}.png".split()))
+                            MetalNode.image.colorspace_settings.name = "Non-Color"
+                            MetalNode.location = (-600,200)
+                            mat_links.new(MetalNode.outputs["Color"], mat_nodes.get("Principled BSDF").inputs["Metallic"])
+                        if "Other0" in texlist.keys():
+                            if not "RoughNode" in locals():
+                                RoughNode = mat_nodes.new('ShaderNodeTexImage')
+                                textPath = DumpDirectory.replace('\\', '/')
+                                RoughNode.image = bpy.data.images.load(filepath = "".join(f"{textPath}Textures/{texlist['Other0']}.png".split()))
+                                RoughNode.image.colorspace_settings.name = "Non-Color"
+                                RoughNode.location = (-300,25)
+                                mat_links.new(RoughNode.outputs["Color"], mat_nodes.get("Principled BSDF").inputs["Roughness"])
+                            if not "MetalNode" in locals():
+                                MetalNode = mat_nodes.new('ShaderNodeTexImage')
+                                textPath = DumpDirectory.replace('\\', '/')
+                                MetalNode.image = bpy.data.images.load(filepath = "".join(f"{textPath}Textures/{texlist['Other0']}.png".split()))
+                                MetalNode.image.colorspace_settings.name = "Non-Color"
+                                MetalNode.location = (-600,200)
+                                mat_links.new(MetalNode.outputs["Color"], mat_nodes.get("Principled BSDF").inputs["Metallic"])
+
+#  ╭───────╮
+#  │ Start │
+#  ╰───────╯
 if __name__ == '__main__':
-    if deleteAllObjects:
+    if DeleteObjects:
         removeAll()
     else:
         main()
