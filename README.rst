@@ -12,3 +12,9 @@ Fantastic Importer for Unreal Engine dumps to Blender 3D v3.1.0.
 :License:           GPL https://opensource.org/licenses/gpl-license
 
 `UDump and Original importer script <https://github.com/1987kostya1/UDump>`_ made by `1987kostya1 <https://github.com/1987kostya1/>`_
+
+
+NEWS
+^^^^
+
+Update releasing later today, including a very important feature, removing autoexport, and some big changes.
