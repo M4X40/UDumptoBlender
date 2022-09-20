@@ -11,7 +11,15 @@ Fantastic Importer for Unreal Engine dumps to Blender 3D v3.1.0.
 :Author:            Max S. <maxst.marie11@gmail.com>
 :License:           GPL https://opensource.org/licenses/gpl-license
 
-`UDump and Original importer script <https://github.com/1987kostya1/UDump>`_ made by `1987kostya1 <https://github.com/1987kostya1/>`_
+
+CREDITS
+^^^^^^^
+
+`UDump and Original importer script <https://github.com/1987kostya1/UDump/>`_ made by `1987kostya1 <https://github.com/1987kostya1/>`_
+
+Main script made by `M4X4 <https://github.com/M4X40/>`_
+
+Formatting + [REDACTED] made by `zwei <https://github.com/zwei-cool/>`
 
 
 NEWS
