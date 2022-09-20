@@ -25,4 +25,4 @@ Formatting + [REDACTED] made by `zwei <https://github.com/zwei-cool/>`
 NEWS
 ^^^^
 
-Update releasing later today, including a very important feature, removing autoexport, and some big changes.
+1.3.0 has released!
