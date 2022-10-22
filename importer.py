@@ -10,7 +10,7 @@
 #  │ Settings │
 #  ╰──────────╯
 
-DumpDirectory = "D:\\umodel\\Dump\\"
+DumpDirectory = "C:\\Users\\wyatt\\Downloads\\Debug1\\Dump\\"
 DeleteObjects = True
 ConvertTextures = True
 OldTextureExtension = "tga"
@@ -255,11 +255,12 @@ def main():
                         mat_links.new(ColorNode.outputs["Color"], mat_nodes.get("Principled BSDF").inputs["Base Color"])
 
                         NormalMap = mat_nodes.new("ShaderNodeNormalMap")
-
+                        NormalNode.image.colorspace_settings.name = "Non-Color"
                         NormalNode = mat_nodes.new('ShaderNodeTexImage')
                         textPath = DumpDirectory.replace('\\', '/')
                         NormalNode.image = bpy.data.images.load(filepath = "".join(f"{textPath}Textures/{texlist['Normal']}.png".split()))
                         NormalNode.location = (-475,-375)
+                        
                         NormalMap.location = (-175,-275)
                         mat_links.new(NormalNode.outputs["Color"], NormalMap.inputs["Color"])
                         mat_links.new(NormalMap.outputs["Normal"], mat_nodes.get("Principled BSDF").inputs["Normal"])
@@ -276,6 +277,7 @@ def main():
                             MetalNode.image = bpy.data.images.load(filepath = "".join(f"{textPath}Textures/{texlist['Metallic']}.png".split()))
                             MetalNode.image.colorspace_settings.name = "Non-Color"
                             MetalNode.location = (-600,200)
+                            
                             mat_links.new(MetalNode.outputs["Color"], mat_nodes.get("Principled BSDF").inputs["Metallic"])
                         if "Other0" in texlist.keys():
                             if not "RoughNode" in locals():
