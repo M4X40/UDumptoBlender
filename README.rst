@@ -25,4 +25,6 @@ Formatting + General Blender Knowledge | `zwei <https://github.com/zwei-cool/>`_
 NEWS
 ^^^^
 
-1.3.1 has released!
+I am working on a version that optimizes a lot of functions and other code. Stay tuned for that update.
+
+Also to the person that asked for FModel suport, FModel added Umap support a few days ago iirc.
