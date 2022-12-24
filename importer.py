@@ -24,14 +24,10 @@ NewTextureExtension = "png"
 
 import os
 import bpy
-import PIL
-import time
 import json
 import shutil
-import threading
 from concurrent.futures import ProcessPoolExecutor as PPE
 from io_import_scene_unreal_psa_psk_280 import pskimport
-from random import randint
 from pathlib import Path
 from PIL import Image
 from math import *
