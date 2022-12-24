@@ -10,7 +10,7 @@
 #  │ Settings │
 #  ╰──────────╯
 
-DumpDirectory = "C:\\Users\\wyatt\\Downloads\\Debug1\\Dump\\"
+DumpDirectory = "D:\\C_Docs\\ResilioSync\\Imports\\UE\\Tools\\udump\\Dump\\"
 DeleteObjects = True
 ConvertTextures = True
 OldTextureExtension = "tga"
@@ -25,11 +25,11 @@ NewTextureExtension = "png"
 import os
 import bpy
 import PIL
-import json
 import time
 import json
 import shutil
 import threading
+from concurrent.futures import ProcessPoolExecutor as PPE
 from io_import_scene_unreal_psa_psk_280 import pskimport
 from random import randint
 from pathlib import Path
@@ -46,6 +46,7 @@ successfulObjects = 0
 failedObjects = 0
 nonImportedObjects = []
 pskObjectCache = {}
+CWD = os.getcwd()
 
 #  ╶─────────────────────────────────────────╴
 
@@ -70,6 +71,24 @@ def fixNan(value):
     else:
         return value
 
+def convert(root, file):
+
+    path = os.path.join(root,file)
+
+    path = path.replace('\\', r'\\')
+    root2 = root.replace('\\', r'\\') + r'\\'
+    base = os.path.splitext(file)[0]
+
+    os.chdir(root2)
+
+    text = Image.open(file)
+    text.save(f'{root2}{base}.{NewTextureExtension}')
+    os.remove(path)
+
+    print(f'Converted {path} to a .{NewTextureExtension}!')
+
+    os.chdir(CWD)
+
 # Actual Import
 def createObject(jsonData):
     objectType = jsonData["type"]
@@ -86,10 +105,7 @@ def createObject(jsonData):
         elif(Path(path + ".psk").is_file()):
             path = path + ".psk"
             ObjectExists = True
-        else:
-            if path != DumpDirectory+"UmodelExportNone":
-                ObjectExists = False
-        if ObjectExists:
+        if path != DumpDirectory+"UmodelExportNone":
             importMesh(path)
 
             imported = bpy.context.active_object
@@ -156,32 +172,11 @@ def main():
         bpy.ops.object.shade_smooth()
 
     # ConvertTextures
-    if ConvertTextures == True:
-        CWD = os.getcwd()
-
+    with PPE() as executor:
         for root, dirs, files in os.walk(DumpDirectory):
             for file in files:
-                if(file.endswith(f".tga")):
-                    path = os.path.join(root,file)
-
-                    path = path.replace('\\', r'\\')
-                    root2 = root.replace('\\', r'\\') + r'\\'
-                    base = os.path.splitext(file)[0]
-
-                    os.chdir(root2)
-
-                    text = Image.open(file)
-                    text.save(f'{root2}{base}.png')
-                    os.remove(path)
-
-                    copyPath = path.split(".tga")
-                    src = f"{copyPath[0]}.png"
-                    if not os.path.exists(f'{DumpDirectory}\\Textures\\'):
-                        os.mkdir(f'{DumpDirectory}\\Textures\\')
-                    dest = f"{DumpDirectory}\\Textures\\{base}.png"
-                    shutil.copyfile(src,dest)
-
-                    os.chdir(CWD)
+                if(file.endswith(f".{OldTextureExtension}")):
+                        future = executor.submit(convert, root, file)
 
     # AutoTexture
     for i in bpy.data.materials:
@@ -206,7 +201,7 @@ def main():
                 try:
                     shutil.copyfile(path,dest)
                 except Exception as e:
-                    print("Same File Error, skipping")
+                    print(f"Same File Error, skipping ({file})")
 
     texlist = {}
 
@@ -247,23 +242,28 @@ def main():
                         mat.use_nodes = True
                         mat_nodes = mat.node_tree.nodes
                         mat_links = mat.node_tree.links
-
-                        ColorNode = mat_nodes.new('ShaderNodeTexImage')
-                        textPath = DumpDirectory.replace('\\', '/')
-                        ColorNode.image = bpy.data.images.load(filepath = "".join(f"{textPath}Textures/{texlist['Diffuse']}.png".split()))
-                        ColorNode.location = (-400,500)
-                        mat_links.new(ColorNode.outputs["Color"], mat_nodes.get("Principled BSDF").inputs["Base Color"])
-
-                        NormalMap = mat_nodes.new("ShaderNodeNormalMap")
-                        NormalNode.image.colorspace_settings.name = "Non-Color"
-                        NormalNode = mat_nodes.new('ShaderNodeTexImage')
-                        textPath = DumpDirectory.replace('\\', '/')
-                        NormalNode.image = bpy.data.images.load(filepath = "".join(f"{textPath}Textures/{texlist['Normal']}.png".split()))
-                        NormalNode.location = (-475,-375)
                         
-                        NormalMap.location = (-175,-275)
-                        mat_links.new(NormalNode.outputs["Color"], NormalMap.inputs["Color"])
-                        mat_links.new(NormalMap.outputs["Normal"], mat_nodes.get("Principled BSDF").inputs["Normal"])
+                        try:
+                            ColorNode = mat_nodes.new('ShaderNodeTexImage')
+                            textPath = DumpDirectory.replace('\\', '/')
+                            ColorNode.image = bpy.data.images.load(filepath = "".join(f"{textPath}Textures/{texlist['Diffuse']}.png".split()))
+                            ColorNode.location = (-400,500)
+                            mat_links.new(ColorNode.outputs["Color"], mat_nodes.get("Principled BSDF").inputs["Base Color"])
+                        except Exception as e:
+                            print(e)
+                        
+                        try:
+                            NormalMap = mat_nodes.new("ShaderNodeNormalMap")
+                            NormalNode = mat_nodes.new('ShaderNodeTexImage')
+                            textPath = DumpDirectory.replace('\\', '/')
+                            NormalNode.image = bpy.data.images.load(filepath = "".join(f"{textPath}Textures/{texlist['Normal']}.png".split()))
+                            NormalNode.image.colorspace_settings.name = "Non-Color"
+                            NormalNode.location = (-475,-375)
+                            NormalMap.location = (-175,-275)
+                            mat_links.new(NormalNode.outputs["Color"], NormalMap.inputs["Color"])
+                            mat_links.new(NormalMap.outputs["Normal"], mat_nodes.get("Principled BSDF").inputs["Normal"])
+                        except Exception as e:
+                            print(e)
                         if "Roughness" in texlist.keys():
                             RoughNode = mat_nodes.new('ShaderNodeTexImage')
                             textPath = DumpDirectory.replace('\\', '/')
