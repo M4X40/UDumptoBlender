@@ -4,19 +4,19 @@
 #  │ M4X4#6494, zwei#0001 • discord.gg/gator │
 #  ╰─────────────────────────────────────────╯
 
-#  ╶───────────────────────────────────────────
+#  ╶─────────────────────────────────────────── #
 
 #  ╭──────────╮
 #  │ Settings │
 #  ╰──────────╯
 
-DumpDirectory = "D:\\C_Docs\\ResilioSync\\Imports\\UE\\Tools\\udump\\Dump\\"
+DumpDirectory = "C:\\Users\\maxst\\Downloads\\Fnaf99GatorGames-main\\Fnaf99GatorGames-main\\testing-main\\Fnaf99\\bin\\x64\\Debug\\Dump\\"
 DeleteObjects = True
 ConvertTextures = True
 OldTextureExtension = "tga"
 NewTextureExtension = "png"
 
-#  ╶─────────────────────────────────────────╴
+#  ╶─────────────────────────────────────────╴ #
 
 #  ╭─────────╮
 #  │ Imports │
@@ -24,16 +24,17 @@ NewTextureExtension = "png"
 
 import os
 import bpy
+import sys
+import _bpy
 import json
 import shutil
-from concurrent.futures import ProcessPoolExecutor as PPE
-from io_import_scene_unreal_psa_psk_280 import pskimport
-from pathlib import Path
-from PIL import Image
-from math import *
 from bpy import *
+from math import *
+from PIL import Image
+from pathlib import Path
+from io_import_scene_unreal_psa_psk_280 import pskimport
 
-#  ╶─────────────────────────────────────────╴
+#  ╶─────────────────────────────────────────╴ #
 
 #  ╭───────────╮
 #  │ Variables │
@@ -44,7 +45,7 @@ nonImportedObjects = []
 pskObjectCache = {}
 CWD = os.getcwd()
 
-#  ╶─────────────────────────────────────────╴
+#  ╶─────────────────────────────────────────╴ #
 
 #  ╭───────────╮
 #  │ Functions │
@@ -66,9 +67,7 @@ def fixNan(value):
         return 0
     else:
         return value
-
 def convert(root, file):
-
     path = os.path.join(root,file)
 
     path = path.replace('\\', r'\\')
@@ -84,6 +83,23 @@ def convert(root, file):
     print(f'Converted {path} to a .{NewTextureExtension}!')
 
     os.chdir(CWD)
+
+def moveTex(root, file):
+    path = os.path.join(root,file)
+
+    path = path.replace('\\', r'\\')
+    root2 = root.replace('\\', r'\\') + r'\\'
+    base = os.path.splitext(file)[0]
+    
+    dest = f"{DumpDirectory}Textures\\{base}.tga"
+    try:
+        shutil.copyfile(path, dest)
+    except Exception:
+        try:
+            path = path.replace('\\\\', r'\\')
+            shutil.copyfile(path,dest)
+        except Exception:
+            result = False
 
 # Actual Import
 def createObject(jsonData):
@@ -117,6 +133,11 @@ def createObject(jsonData):
 
 # Main data handler
 def main():
+    
+    # Create Textures Folder
+    if not os.path.exists(f"{DumpDirectory}\\Textures\\"):
+        os.mkdir(f"{DumpDirectory}\\Textures\\")
+    
     jsonFileData = json.loads((open(DumpDirectory+"dump.json","r").read())) 
     listLen = len(jsonFileData)
     for i in range(0,listLen):
@@ -146,33 +167,27 @@ def main():
     except Exception:
         print(f"InvertedSphere Not Found, Continuing.")
 
-    #Set Unknown Objects to 1/10 Scale
-    try:
-        bpy.ops.object.select_all(action='DESELECT')
-        bpy.data.objects['Cube.mo'].scale = (0.1, 0.1, 0.1)
-    except Exception:
-        print("No Unknown Cubes, trying Spheres")
-    try:
-        bpy.ops.object.select_all(action='DESELECT')
-        bpy.data.objects['Sphere.mo'].scale = (0.1, 0.1, 0.1)
-    except Exception:
-        print("No Unknown Spheres, continueing.")
-
     # Shade Smooth / Delete VCOLS / Nodes
     bpy.ops.object.select_all(action='SELECT')
     for ob in bpy.context.selected_objects:
         ob.active_material.use_nodes = True
         bpy.context.view_layer.objects.active = ob
         while len(ob.data.vertex_colors) > 0:
-            bpy.ops.mesh.vertex_color_remove()
+            try:
+                bpy.ops.geometry.color_attribute_remove()
+            except Exception:
+                bpy.ops.mesh.vertex_color_remove()
         bpy.ops.object.shade_smooth()
 
-    # ConvertTextures
-    with PPE() as executor:
+    #Start Convertion
+    if ConvertTextures:
         for root, dirs, files in os.walk(DumpDirectory):
             for file in files:
                 if(file.endswith(f".{OldTextureExtension}")):
-                        future = executor.submit(convert, root, file)
+                    moveTex(root, file)
+        for root, dirs, files in os.walk(f'{DumpDirectory}Textures\\'):
+            for file in files:
+                convert(root, file)
 
     # AutoTexture
     for i in bpy.data.materials:
@@ -196,8 +211,8 @@ def main():
 
                 try:
                     shutil.copyfile(path,dest)
-                except Exception as e:
-                    print(f"Same File Error, skipping ({file})")
+                except Exception:
+                    continue
 
     texlist = {}
 
