@@ -4,11 +4,11 @@ UModeltoBlender
 Fantastic Importer for Unreal Engine dumps to Blender 3D v3.1.0.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-:Script Version:    1.3.1 (update later tonight hopefully)
+:Script Version:    1.4.0
 :Python Version:    3.10.4
 :Blender Version:   3.1.0
 :Download Page:     https://github.com/M4X40/UModeltoBlender/releases/latest
-:Authors:            Max S. <maxst.marie11@gmail.com>, Zwei <zwei.lmao.mail@gmail.com>
+:Authors:           Max S. <maxst.marie11@gmail.com>, Zwei <zwei.lmao.mail@gmail.com>
 :License:           GPL https://opensource.org/licenses/gpl-license
 
 
@@ -25,4 +25,4 @@ Formatting + General Blender Knowledge | `zwei <https://github.com/zwei-cool/>`_
 NEWS
 ^^^^
 
-I released 1.4 for like 3 days but reverted after some testing :sob:
+Released the better 1.4 (now with 0 parallel processing!)
