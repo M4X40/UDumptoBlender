@@ -10,7 +10,7 @@
 #  │ Settings │
 #  ╰──────────╯
 
-DumpDirectory = "C:\\Users\\maxst\\Downloads\\Fnaf99GatorGames-main\\Fnaf99GatorGames-main\\testing-main\\Fnaf99\\bin\\x64\\Debug\\Dump\\"
+DumpDirectory = "D:\\C_Docs\\ResilioSync\\Imports\\UE\\Tools\\udump-new\\Dump\\"
 DeleteObjects = True
 ConvertTextures = True
 OldTextureExtension = "tga"
@@ -23,9 +23,8 @@ NewTextureExtension = "png"
 #  ╰─────────╯
 
 import os
+import cv2
 import bpy
-import sys
-import _bpy
 import json
 import shutil
 from bpy import *
@@ -80,7 +79,7 @@ def convert(root, file):
     text.save(f'{root2}{base}.{NewTextureExtension}')
     os.remove(path)
 
-    print(f'Converted {path} to a .{NewTextureExtension}!')
+    print(f' --> <-- Converted {file}!')
 
     os.chdir(CWD)
 
@@ -88,7 +87,6 @@ def moveTex(root, file):
     path = os.path.join(root,file)
 
     path = path.replace('\\', r'\\')
-    root2 = root.replace('\\', r'\\') + r'\\'
     base = os.path.splitext(file)[0]
     
     dest = f"{DumpDirectory}Textures\\{base}.tga"
@@ -99,7 +97,26 @@ def moveTex(root, file):
             path = path.replace('\\\\', r'\\')
             shutil.copyfile(path,dest)
         except Exception:
-            result = False
+            print(f'!!! --> Error in moving textures to folder: {e}')
+
+def splitORM(root, file):
+    fname = ((file.split(".tga"))[0]) + ".png"
+    path = os.path.join(root,fname)
+    path = path.replace('\\', r'\\')
+    base = os.path.splitext(fname)[0]
+
+    img = cv2.imread(f'{path}')
+
+    blue,green,red = cv2.split(img)
+    del blue
+
+    name = (base.split("OcclusionRoughnessMetallic"))[0]
+
+    cv2.imwrite(f"{root}{name}Roughness.png", red)
+    cv2.imwrite(f"{root}{name}Metallic.png", green)
+    os.remove(path)
+    
+    print(f" <-- --> Split {fname} into Roughness and Metallic textures!")
 
 # Actual Import
 def createObject(jsonData):
@@ -113,10 +130,8 @@ def createObject(jsonData):
 
         if(Path(path + ".pskx").is_file()):
             path = path + ".pskx"
-            ObjectExists = True
         elif(Path(path + ".psk").is_file()):
             path = path + ".psk"
-            ObjectExists = True
         if path != DumpDirectory+"UmodelExportNone":
             importMesh(path)
 
@@ -154,20 +169,21 @@ def main():
         bpy.ops.object.select_all(action='DESELECT')
         bpy.data.objects['SM_SkySphere.mo'].select_set(True)
         bpy.ops.object.delete()
-        print("Found and deleted SkySphere")
+        print(" --> Found and deleted SkySphere")
     except Exception:
-        print(f"SkySphere Not Found, Trying InvertedSphere.")
+        print(f" --> SkySphere Not Found, Trying InvertedSphere.")
 
     # Delete InvertedSphere
     try:
         bpy.ops.object.select_all(action='DESELECT')
         bpy.data.objects['MOD_InvertedSphere.mo'].select_set(True)
         bpy.ops.object.delete()
-        print("Found and deleted InvertedSphere")
+        print(" --> Found and deleted InvertedSphere")
     except Exception:
-        print(f"InvertedSphere Not Found, Continuing.")
+        print(f" --> InvertedSphere Not Found, Continuing.")
 
     # Shade Smooth / Delete VCOLS / Nodes
+    print(" --> Enabling nodes, shade smoothing, and deleting V-Colors")
     bpy.ops.object.select_all(action='SELECT')
     for ob in bpy.context.selected_objects:
         ob.active_material.use_nodes = True
@@ -181,15 +197,21 @@ def main():
 
     #Start Convertion
     if ConvertTextures:
+        print(" --> Starting texture conversion process")
         for root, dirs, files in os.walk(DumpDirectory):
             for file in files:
                 if(file.endswith(f".{OldTextureExtension}")):
                     moveTex(root, file)
         for root, dirs, files in os.walk(f'{DumpDirectory}Textures\\'):
             for file in files:
-                convert(root, file)
+                if(file.endswith(f".{OldTextureExtension}")):
+                    convert(root, file)
+                    if "OcclusionRoughnessMetallic" in file:
+                        splitORM(root, file)
+        print(" --> Finished texture conversion process")
 
     # AutoTexture
+    print(" --> Starting auto-texturing")
     for i in bpy.data.materials:
         mat = str(i)
         mat = mat.split('<bpy_struct, Material("')
@@ -237,16 +259,47 @@ def main():
                     if 'Roughness=' in line:
                         texPath = line.split('Roughness=')
                         texPath = texPath[1]
+                        if "OcclusionRoughnessMetallic" in texPath:
+                            texPath = (texPath.split("OcclusionRoughnessMetallic"))[0]
+                            texPath = f"{texPath}Roughness"
                         texlist['Roughness'] = texPath
                     if 'Metallic=' in line:
                         texPath = line.split('Metallic=')
                         texPath = texPath[1]
+                        if "OcclusionRoughnessMetallic" in texPath:
+                            texPath = (texPath.split("OcclusionRoughnessMetallic"))[0]
+                            texPath = f"{texPath}Roughness"
                         texlist['Metallic'] = texPath
                     if 'Other[0]=' in line:
                         if 'OcclusionRoughnessMetallic' in line:
-                            texPath = line.split('Other[0]=')
-                            texPath = texPath[1]
-                            texlist["Other0"] = texPath
+                            split = line.split("Other[0]=")[1]
+                            texPath = split.split("OcclusionRoughness")
+                            texPath = texPath[0] + texPath[1]
+                            texlist['Metallic'] = texPath
+                            texPath = split.split("Occlusion")
+                            texPath = texPath[0] + "Roughness"
+                            texlist['Roughness'] = texPath
+                        elif '_Metallic' in line:
+                            texPath = line.split("Other[0]=")[1]
+                            texlist['Metallic'] = texPath
+                        elif '_Roughness' in line:
+                            texPath = line.split("Other[0]=")[1]
+                            texlist['Roughness'] = texPath
+                    if 'Other[1]=' in line:
+                        if 'OcclusionRoughnessMetallic' in line:
+                            split = line.split("Other[1]=")[1]
+                            texPath = split.split("OcclusionRoughness")
+                            texPath = texPath[0] + texPath[1]
+                            texlist['Metallic'] = texPath
+                            texPath = split.split("Occlusion")
+                            texPath = texPath[0] + "Roughness"
+                            texlist['Roughness'] = texPath
+                        elif '_Metallic' in line:
+                            texPath = line.split("Other[1]=")[1]
+                            texlist['Metallic'] = texPath
+                        elif '_Roughness' in line:
+                            texPath = line.split("Other[1]=")[1]
+                            texlist['Roughness'] = texPath
 
             for mat in bpy.data.materials:
                 if mat.name == base:
@@ -288,24 +341,8 @@ def main():
                             MetalNode.image = bpy.data.images.load(filepath = "".join(f"{textPath}Textures/{texlist['Metallic']}.png".split()))
                             MetalNode.image.colorspace_settings.name = "Non-Color"
                             MetalNode.location = (-600,200)
-                            
                             mat_links.new(MetalNode.outputs["Color"], mat_nodes.get("Principled BSDF").inputs["Metallic"])
-                        if "Other0" in texlist.keys():
-                            if not "RoughNode" in locals():
-                                RoughNode = mat_nodes.new('ShaderNodeTexImage')
-                                textPath = DumpDirectory.replace('\\', '/')
-                                RoughNode.image = bpy.data.images.load(filepath = "".join(f"{textPath}Textures/{texlist['Other0']}.png".split()))
-                                RoughNode.image.colorspace_settings.name = "Non-Color"
-                                RoughNode.location = (-300,25)
-                                mat_links.new(RoughNode.outputs["Color"], mat_nodes.get("Principled BSDF").inputs["Roughness"])
-                            if not "MetalNode" in locals():
-                                MetalNode = mat_nodes.new('ShaderNodeTexImage')
-                                textPath = DumpDirectory.replace('\\', '/')
-                                MetalNode.image = bpy.data.images.load(filepath = "".join(f"{textPath}Textures/{texlist['Other0']}.png".split()))
-                                MetalNode.image.colorspace_settings.name = "Non-Color"
-                                MetalNode.location = (-600,200)
-                                mat_links.new(MetalNode.outputs["Color"], mat_nodes.get("Principled BSDF").inputs["Metallic"])
-
+    print(" --> Done!")
 #  ╭───────╮
 #  │ Start │
 #  ╰───────╯
