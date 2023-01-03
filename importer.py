@@ -10,9 +10,9 @@
 #  │ Settings │
 #  ╰──────────╯
 
-DumpDirectory = "D:\\C_Docs\\ResilioSync\\Imports\\UE\\Tools\\udump-new\\Dump\\"
+DumpDirectory = "C:\\Users\\maxst\\Downloads\\fnaf99\\Fnaf99GatorGames-main\\Fnaf99GatorGames-main\\testing-main\\Fnaf99\\bin\\x64\\Debug\\Dump\\"
 DeleteObjects = True
-ConvertTextures = True
+ConvertTextures = False
 OldTextureExtension = "tga"
 NewTextureExtension = "png"
 
@@ -38,10 +38,9 @@ from io_import_scene_unreal_psa_psk_280 import pskimport
 #  ╭───────────╮
 #  │ Variables │
 #  ╰───────────╯
-successfulObjects = 0
-failedObjects = 0
-nonImportedObjects = []
-pskObjectCache = {}
+successfulObjects, failedObjects = 0
+nonImportedObjects, matCache = []
+pskObjectCache, texlist = {}
 CWD = os.getcwd()
 
 #  ╶─────────────────────────────────────────╴ #
@@ -66,10 +65,9 @@ def fixNan(value):
         return 0
     else:
         return value
-def convert(root, file):
-    path = os.path.join(root,file)
 
-    path = path.replace('\\', r'\\')
+def convert(root, file):
+    path = (os.path.join(root,file)).replace('\\', r'\\')
     root2 = root.replace('\\', r'\\') + r'\\'
     base = os.path.splitext(file)[0]
 
@@ -84,12 +82,9 @@ def convert(root, file):
     os.chdir(CWD)
 
 def moveTex(root, file):
-    path = os.path.join(root,file)
-
-    path = path.replace('\\', r'\\')
-    base = os.path.splitext(file)[0]
+    path = (os.path.join(root,file)).replace('\\', r'\\')
     
-    dest = f"{DumpDirectory}Textures\\{base}.tga"
+    dest = f"{DumpDirectory}Textures\\{file}"
     try:
         shutil.copyfile(path, dest)
     except Exception:
@@ -97,12 +92,11 @@ def moveTex(root, file):
             path = path.replace('\\\\', r'\\')
             shutil.copyfile(path,dest)
         except Exception:
-            print(f'!!! --> Error in moving textures to folder: {e}')
+            print(f'[ERR] --> Error in moving textures to folder: {e}')
 
 def splitORM(root, file):
     fname = ((file.split(".tga"))[0]) + ".png"
-    path = os.path.join(root,fname)
-    path = path.replace('\\', r'\\')
+    path = os.path.join(root,fname).replace('\\', r'\\')
     base = os.path.splitext(fname)[0]
 
     img = cv2.imread(f'{path}')
@@ -110,7 +104,14 @@ def splitORM(root, file):
     blue,green,red = cv2.split(img)
     del blue
 
-    name = (base.split("OcclusionRoughnessMetallic"))[0]
+    if "OcclusionRoughnessMetallic" in file:
+        name = (base.split("OcclusionRoughnessMetallic"))[0]
+    elif "ORM" in file:
+        name = (base.split("ORM"))[0]
+    elif "HRM" in file:
+        name = (base.split("HRM"))[0]
+    elif "MTRAO" in file:
+        name = (base.split("MTRAO"))[0]
 
     cv2.imwrite(f"{root}{name}Roughness.png", red)
     cv2.imwrite(f"{root}{name}Metallic.png", green)
@@ -122,11 +123,7 @@ def splitORM(root, file):
 def createObject(jsonData):
     objectType = jsonData["type"]
     if(objectType=="mesh"):
-        path = jsonData["path"]
-
-        path = path.split('.')[0]
-
-        path = DumpDirectory+"UmodelExport"+path
+        path = DumpDirectory+"UmodelExport"+(jsonData["path"].split('.')[0])
 
         if(Path(path + ".pskx").is_file()):
             path = path + ".pskx"
@@ -139,7 +136,6 @@ def createObject(jsonData):
 
             location = jsonData["position"]
             rotation = jsonData["rotation"]
-
             scale = jsonData["scale"]
 
             imported.location = (fixNan(location["X"])/100,fixNan(location["Y"])/100*-1,fixNan(location["Z"]/100))
@@ -158,11 +154,6 @@ def main():
     for i in range(0,listLen):
         createObject(jsonFileData[i])
         print("Imported object "+str(i)+"/"+str(listLen))
-
-    textfile = open(DumpDirectory+"brokenObjects.txt", "w")
-    for element in nonImportedObjects:
-        textfile.write(element + "\n")
-    textfile.close()
 
     # Delete SkySphere
     try:
@@ -202,29 +193,24 @@ def main():
             for file in files:
                 if(file.endswith(f".{OldTextureExtension}")):
                     moveTex(root, file)
-        for root, dirs, files in os.walk(f'{DumpDirectory}Textures\\'):
-            for file in files:
-                if(file.endswith(f".{OldTextureExtension}")):
-                    convert(root, file)
-                    if "OcclusionRoughnessMetallic" in file:
-                        splitORM(root, file)
+                if "Textures\\" in root:
+                    if(file.endswith(f".{OldTextureExtension}")):
+                        convert(root, file)
+                        if "OcclusionRoughnessMetallic" in file or "ORM" in file or "HRM" in file or "MTRAO" in file:
+                            splitORM(root, file)
         print(" --> Finished texture conversion process")
 
     # AutoTexture
     print(" --> Starting auto-texturing")
     for i in bpy.data.materials:
-        mat = str(i)
-        mat = mat.split('<bpy_struct, Material("')
-        mat = mat[1].split('") at ')
-        mat = mat[0]
+        mat = (str(i).split('<bpy_struct, Material("')[1]).split('") at ')[0]
 
     for root, dirs, files in os.walk(DumpDirectory):
         for file in files:
 
             if(file.endswith(f".mat")):
 
-                path = os.path.join(root,file)
-                path = path.replace('\\', r'\\')
+                path = os.path.join(root,file).replace('\\', r'\\')
 
                 if not os.path.exists(f'{DumpDirectory}\\Materials\\'):
                     os.mkdir(f'{DumpDirectory}\\Materials\\')
@@ -233,66 +219,62 @@ def main():
 
                 try:
                     shutil.copyfile(path,dest)
-                except Exception:
-                    continue
-
-    texlist = {}
+                except Exception as e:
+                    if not "are the same file" in str(e):
+                        print(f"[ERR] Failed to move material: ({e})") 
 
     for root, dirs, files in os.walk(f"{DumpDirectory}\\Materials\\"):
         for file in files:
+            texlist = {}
             os.chdir(root)
 
-            path = os.path.join(root,file)
-            path = path.replace('\\', r'\\')
+            path = (os.path.join(root,file)).replace('\\', r'\\')
             base = os.path.splitext(file)[0]
 
             with open(file) as f:
                 for line in f.readlines():
                     if 'Diffuse=' in line:
-                        texPath = line.split('Diffuse=')
-                        texPath = texPath[1]
-                        texlist["Diffuse"] = texPath
-                    if 'Normal=' in line:
-                        texPath = line.split('Normal=')
-                        texPath = texPath[1]
+                        texPath = (line.split('Diffuse='))[1]
+                        if '_Roughness' in line:
+                            texlist['Roughness'] = texPath
+                            texPath = texPath.split("Roughness")[0]
+                            texlist['Diffuse'] = (texPath) + "BaseColor"
+                        else:
+                            texlist["Diffuse"] = texPath
+                    elif 'Normal=' in line:
+                        texPath = (line.split('Normal='))[1]
                         texlist["Normal"] = texPath
-                    if 'Roughness=' in line:
-                        texPath = line.split('Roughness=')
-                        texPath = texPath[1]
+                    elif 'Roughness=' in line:
+                        texPath = (line.split('Roughness='))[1]
                         if "OcclusionRoughnessMetallic" in texPath:
                             texPath = (texPath.split("OcclusionRoughnessMetallic"))[0]
                             texPath = f"{texPath}Roughness"
                         texlist['Roughness'] = texPath
-                    if 'Metallic=' in line:
-                        texPath = line.split('Metallic=')
-                        texPath = texPath[1]
+                    elif 'Metallic=' in line:
+                        texPath = (line.split('Metallic='))[1]
                         if "OcclusionRoughnessMetallic" in texPath:
                             texPath = (texPath.split("OcclusionRoughnessMetallic"))[0]
                             texPath = f"{texPath}Roughness"
                         texlist['Metallic'] = texPath
-                    if 'Other[0]=' in line:
+                    elif 'Other[0]=' in line:
+                        texPath1 = line.split("Other[0]=")[1]
                         if 'OcclusionRoughnessMetallic' in line:
-                            split = line.split("Other[0]=")[1]
-                            texPath = split.split("OcclusionRoughness")
+                            texPath = texPath1.split("OcclusionRoughness")
                             texPath = texPath[0] + texPath[1]
                             texlist['Metallic'] = texPath
-                            texPath = split.split("Occlusion")
-                            texPath = texPath[0] + "Roughness"
+                            texPath = texPath1.split("Occlusion")[0] + "Roughness"
                             texlist['Roughness'] = texPath
                         elif '_Metallic' in line:
-                            texPath = line.split("Other[0]=")[1]
                             texlist['Metallic'] = texPath
                         elif '_Roughness' in line:
-                            texPath = line.split("Other[0]=")[1]
                             texlist['Roughness'] = texPath
-                    if 'Other[1]=' in line:
+                    elif 'Other[1]=' in line:
                         if 'OcclusionRoughnessMetallic' in line:
                             split = line.split("Other[1]=")[1]
                             texPath = split.split("OcclusionRoughness")
                             texPath = texPath[0] + texPath[1]
                             texlist['Metallic'] = texPath
-                            texPath = split.split("Occlusion")
-                            texPath = texPath[0] + "Roughness"
+                            texPath = split.split("Occlusion")[0] + "Roughness"
                             texlist['Roughness'] = texPath
                         elif '_Metallic' in line:
                             texPath = line.split("Other[1]=")[1]
@@ -303,6 +285,8 @@ def main():
 
             for mat in bpy.data.materials:
                 if mat.name == base:
+                    global matCache
+                    if mat.name not in matCache:
                         mat.use_nodes = True
                         mat_nodes = mat.node_tree.nodes
                         mat_links = mat.node_tree.links
@@ -314,7 +298,7 @@ def main():
                             ColorNode.location = (-400,500)
                             mat_links.new(ColorNode.outputs["Color"], mat_nodes.get("Principled BSDF").inputs["Base Color"])
                         except Exception as e:
-                            print(e)
+                            print(f"[WARN] {e}")
                         
                         try:
                             NormalMap = mat_nodes.new("ShaderNodeNormalMap")
@@ -327,21 +311,32 @@ def main():
                             mat_links.new(NormalNode.outputs["Color"], NormalMap.inputs["Color"])
                             mat_links.new(NormalMap.outputs["Normal"], mat_nodes.get("Principled BSDF").inputs["Normal"])
                         except Exception as e:
-                            print(e)
-                        if "Roughness" in texlist.keys():
-                            RoughNode = mat_nodes.new('ShaderNodeTexImage')
-                            textPath = DumpDirectory.replace('\\', '/')
-                            RoughNode.image = bpy.data.images.load(filepath = "".join(f"{textPath}Textures/{texlist['Roughness']}.png".split()))
-                            RoughNode.image.colorspace_settings.name = "Non-Color"
-                            RoughNode.location = (-300,0)
-                            mat_links.new(RoughNode.outputs["Color"], mat_nodes.get("Principled BSDF").inputs["Roughness"])
-                        if "Metallic" in texlist.keys():
-                            MetalNode = mat_nodes.new('ShaderNodeTexImage')
-                            textPath = DumpDirectory.replace('\\', '/')
-                            MetalNode.image = bpy.data.images.load(filepath = "".join(f"{textPath}Textures/{texlist['Metallic']}.png".split()))
-                            MetalNode.image.colorspace_settings.name = "Non-Color"
-                            MetalNode.location = (-600,200)
-                            mat_links.new(MetalNode.outputs["Color"], mat_nodes.get("Principled BSDF").inputs["Metallic"])
+                            print(f"[WARN] {e}")
+                        
+                        try:
+                            if "Roughness" in texlist.keys():
+                                RoughNode = mat_nodes.new('ShaderNodeTexImage')
+                                textPath = DumpDirectory.replace('\\', '/')
+                                RoughNode.image = bpy.data.images.load(filepath = "".join(f"{textPath}Textures/{texlist['Roughness']}.png".split()))
+                                RoughNode.image.colorspace_settings.name = "Non-Color"
+                                RoughNode.location = (-300,0)
+                                mat_links.new(RoughNode.outputs["Color"], mat_nodes.get("Principled BSDF").inputs["Roughness"])
+                        except Exception as e:
+                            print(f"[WARN] {e}")
+                        
+                        try:
+                            if "Metallic" in texlist.keys():
+                                MetalNode = mat_nodes.new('ShaderNodeTexImage')
+                                textPath = DumpDirectory.replace('\\', '/')
+                                MetalNode.image = bpy.data.images.load(filepath = "".join(f"{textPath}Textures/{texlist['Metallic']}.png".split()))
+                                MetalNode.image.colorspace_settings.name = "Non-Color"
+                                MetalNode.location = (-600,200)
+                                mat_links.new(MetalNode.outputs["Color"], mat_nodes.get("Principled BSDF").inputs["Metallic"])
+                        except Exception as e:
+                            print(f"[WARN] {e}")
+
+                    matCache.append(mat.name)
+            del texlist
     print(" --> Done!")
 #  ╭───────╮
 #  │ Start │
