@@ -1,9 +1,36 @@
 import os
 import shutil
-import cv2
 import sys
+import subprocess
 from concurrent.futures import ProcessPoolExecutor as PPE
-from PIL import Image
+
+try:   
+    import cv2
+    from PIL import Image
+except Exception:
+    subprocess.check_call(
+        [sys.executable, '-m', 'pip', 'install', '--upgrade', '--user', '--no-warn-script-location', 'pip',])
+    subprocess.check_call(
+        [sys.executable, '-m', 'pip', 'install', '--user', 'opencv-python',])
+    subprocess.check_call(
+        [sys.executable, '-m', 'pip', 'install', '--upgrade', 'wget',])
+    try:
+        import cv2
+    except Exception:
+        shutil.rmtree(f'{os.getenv("APPDATA")}\\Python\\')
+        
+        subprocess.check_call(
+            [sys.executable, '-m', 'pip', 'install', '--user', '--upgrade', 'pip',])
+        subprocess.check_call(
+            [sys.executable, '-m', 'pip', 'install', '--user', 'opencv-python',])
+        subprocess.check_call(
+        [sys.executable, '-m', 'pip', 'install', '--upgrade', 'wget',])
+
+    subprocess.check_call(
+        [sys.executable, '-m', 'pip', 'install', '--user', '--upgrade', 'Pillow',])
+    
+    import cv2
+    from PIL import Image
 
 # ARGUMENTS
 DD = sys.argv[0]   #DumpDirectory
