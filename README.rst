@@ -25,4 +25,4 @@ Formatting + General Blender Knowledge | `zwei <https://github.com/zwei-cool/>`_
 NEWS
 ^^^^
 
-Released the better 1.4 (now with 0 parallel processing!)
+May or may not have gotten parallel processing to work, still testing and fixing things but expect an update soon.
