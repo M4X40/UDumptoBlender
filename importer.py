@@ -23,24 +23,69 @@ NewTextureExtension = "png"
 #  ╰─────────╯
 
 import os
-import cv2
 import bpy
+import sys
 import json
 import shutil
+import subprocess
 from bpy import *
 from math import *
-from PIL import Image
 from pathlib import Path
-from io_import_scene_unreal_psa_psk_280 import pskimport
+
+#  ╶─────────────────────────────────────────╴ #
+
+#  ╭────────────────────────────╮
+#  │ Get modules if unavailable │
+#  ╰────────────────────────────╯
+
+try:   
+    import cv2
+    from PIL import Image
+    import wget
+    import zipfile
+except Exception:
+    subprocess.check_call(
+        [sys.executable, '-m', 'pip', 'install', '--upgrade', '--no-warn-script-location', 'pip',])
+    subprocess.check_call(
+        [sys.executable, '-m', 'pip', 'install', 'opencv-python',])
+    try:
+        import cv2
+    except Exception:
+        shutil.rmtree(f'{os.getenv("APPDATA")}\\Python\\')
+        
+        subprocess.check_call(
+            [sys.executable, '-m', 'pip', 'install', '--upgrade', 'pip',])
+        subprocess.check_call(
+            [sys.executable, '-m', 'pip', 'install', 'opencv-python',])
+
+    subprocess.check_call(
+        [sys.executable, '-m', 'pip', 'install', '--upgrade', 'Pillow',])
+    subprocess.check_call(
+        [sys.executable, '-m', 'pip', 'install', '--upgrade', 'wget',])
+    
+    import cv2
+    from PIL import Image
+    import wget
+    import zipfile
+
+try:
+    from io_import_scene_unreal_psa_psk_280 import pskimport
+    print("worked")
+except Exception:
+    wget.download('https://raw.githubusercontent.com/Befzz/blender3d_import_psk_psa/master/addons/io_import_scene_unreal_psa_psk_280.py', f'{os.getcwd()}\\{os.getcwd()[-3:]}\\scripts\\addons\\io_import_scene_unreal_psa_psk_280.py')
+    from io_import_scene_unreal_psa_psk_280 import pskimport
 
 #  ╶─────────────────────────────────────────╴ #
 
 #  ╭───────────╮
 #  │ Variables │
 #  ╰───────────╯
-successfulObjects, failedObjects = 0
-nonImportedObjects, matCache = []
-pskObjectCache, texlist = {}
+successfulObjects = 0
+failedObjects = 0
+nonImportedObjects= []
+matCache = []
+pskObjectCache = {}
+texlist = {}
 CWD = os.getcwd()
 
 #  ╶─────────────────────────────────────────╴ #
@@ -87,7 +132,7 @@ def moveTex(root, file):
     dest = f"{DumpDirectory}Textures\\{file}"
     try:
         shutil.copyfile(path, dest)
-    except Exception:
+    except Exception as e:
         try:
             path = path.replace('\\\\', r'\\')
             shutil.copyfile(path,dest)
