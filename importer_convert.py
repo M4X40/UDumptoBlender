@@ -11,7 +11,7 @@ except Exception:
     subprocess.check_call(
         [sys.executable, '-m', 'pip', 'install', '--upgrade', '--user', '--no-warn-script-location', 'pip',])
     subprocess.check_call(
-        [sys.executable, '-m', 'pip', 'install', '--user', 'opencv-python==4.5.3.56',])
+        [sys.executable, '-m', 'pip', 'install', '--user', 'opencv-contrib-python',])
     subprocess.check_call(
         [sys.executable, '-m', 'pip', 'install', '--upgrade', 'wget',])
     try:
@@ -22,7 +22,7 @@ except Exception:
         subprocess.check_call(
             [sys.executable, '-m', 'pip', 'install', '--user', '--upgrade', 'pip',])
         subprocess.check_call(
-            [sys.executable, '-m', 'pip', 'install', '--user', 'opencv-python==4.5.3.56',])
+            [sys.executable, '-m', 'pip', 'install', '--user', 'opencv-contrib-python',])
         subprocess.check_call(
         [sys.executable, '-m', 'pip', 'install', '--upgrade', 'wget',])
 
