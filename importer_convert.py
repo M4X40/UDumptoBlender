@@ -33,9 +33,9 @@ except Exception:
     from PIL import Image
 
 # ARGUMENTS
-DD = sys.argv[0]   #DumpDirectory
-OTE = sys.argv[1]  #OldTextureExtension
-NTE = sys.argv[2]  #NewTextureExtension
+DD = sys.argv[0][0]   #DumpDirectory
+OTE = sys.argv[0][1]  #OldTextureExtension
+NTE = sys.argv[0][2]  #NewTextureExtension
 
 CWD = os.getcwd()
 
