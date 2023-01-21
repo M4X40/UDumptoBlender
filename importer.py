@@ -1,8 +1,8 @@
-#  ╭─────────────────────────────────────────╮
-#  │ UDump to Blender                        │
-#  │                                         │
-#  │ M4X4#6494, zwei#0001 • discord.gg/gator │
-#  ╰─────────────────────────────────────────╯
+#  ╭─────────────────────────────────────────────────────────╮
+#  │                   UDump to Blender                      │
+#  │                                                         │
+#  │ M4X4#6494, zwei#0001 • github.com/M4X40/UModelToBlender │
+#  ╰─────────────────────────────────────────────────────────╯
 
 #  ╶─────────────────────────────────────────── #
 
@@ -10,22 +10,12 @@
 #  │ Settings │
 #  ╰──────────╯
 
-DumpDirectory = "C:\\Users\\maxst\\Downloads\\Fnaf99GatorGames-main\\Fnaf99GatorGames-main\\testing-main\\Fnaf99\\bin\\x64\\Debug\\Dump\\"
+DumpDirectory = "C:\\Users\\maxst\\Downloads\\Debug\\Dump\\"
 DeleteObjects = True
 ProcessTextures = True
 TextureExtension = ".png"
 
 #  ╶─────────────────────────────────────────── #
-
-"""
-
-Print settings. Customize what gets printed to the console
-
-    - Verbose    |   Regular info prints
-    - Warning    |   Printed as [WARN]
-    - Debug      |   Development purposes, currently unused
-
-"""
 
 Verbose = True
 Warning = True
@@ -107,13 +97,14 @@ CWD = os.getcwd()
 #  │ Functions │
 #  ╰───────────╯
 
-# Tied to DeleteObjects
 def removeAll():
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.delete()
+    materials = bpy.data.materials
+    for material in materials:
+        materials.remove(material)
     main()
 
-# Print functions, read 22-26.
 def print_v(msg):
     if Verbose:
         print(msg)
@@ -126,7 +117,6 @@ def print_d(msg):
     if Debug:
         print(f"DEBUG: {msg}")
 
-# Main Import Funtion, Used in createObject()
 def importMesh(filePath):
     return pskimport(filePath,bpy.context,bReorientBones=True)
 
@@ -137,7 +127,6 @@ def fixNan(value):
     else:
         return value
 
-# All texture processing functions
 if ProcessTextures:
     def splitORM(root, file):
         fname = ((file.split(".tga"))[0])
@@ -212,6 +201,33 @@ def createObject(jsonData):
             imported.rotation_euler = (radians(fixNan(rotation["Z"])),radians(fixNan(rotation["X"])*-1),radians(fixNan(rotation["Y"])*-1))
             imported.scale = (fixNan(scale["X"]),fixNan(scale["Y"]),fixNan(scale["Z"]))
 
+def fixMaterials():
+    try:
+        bpy.ops.object.select_all(action='SELECT')
+        for ob in bpy.context.selected_objects:
+            if ob.type == 'MESH' and len(ob.data.polygons) > 0:
+                if not len(ob.material_slots) == 0:
+                    for mat in ob.material_slots:
+                        if mat.name == "WorldGridMaterial":
+                            ob_name = ob.name.split(".")[0]
+                            jsonFileData = json.loads(open(DumpDirectory+"dump.json","r").read())
+                            for ob_data in jsonFileData:
+                                if ob_name in ob_data["path"]:
+                                    mat_name = ob_data["materialName"]
+                                    mat.material = bpy.data.materials.get(mat_name)
+                            print_v(f"Fixed {ob.name}'s materials.")
+                else:
+                    ob_name = ob.name.split(".")[0]
+                    jsonFileData = json.loads(open(DumpDirectory+"dump.json","r").read())
+                    for ob_data in jsonFileData:
+                        if ob_name in ob_data["path"]:
+                            mat_name = ob_data["materialName"]
+                            bpy.ops.object.material_slot_add(bpy.data.materials.get(mat_name))
+        bpy.ops.object.select_all(action='DESELECT')
+    except Exception as e:
+        print_w(f"[WARN] {e}")
+
+
 #  ╶─────────────────────────────────────────╴ #
 
 #  ╭───────────────╮
@@ -226,7 +242,6 @@ def main():
         createObject(jsonFileData[i])
         print_v("Imported object "+str(i)+"/"+str(listLen))
 
-    # Delete SkySphere
     try:
         bpy.ops.object.select_all(action='DESELECT')
         bpy.data.objects['SM_SkySphere.mo'].select_set(True)
@@ -235,7 +250,6 @@ def main():
     except Exception:
         print_v(f" --> SkySphere Not Found, Trying InvertedSphere.")
 
-    # Delete InvertedSphere
     try:
         bpy.ops.object.select_all(action='DESELECT')
         bpy.data.objects['MOD_InvertedSphere.mo'].select_set(True)
@@ -244,7 +258,6 @@ def main():
     except Exception:
         print_v(f" --> InvertedSphere Not Found, Continuing.")
 
-    # Shade Smooth / Delete VCOLS / Nodes
     print_v(" --> Enabling nodes, shade smoothing, and deleting V-Colors")
     bpy.ops.object.select_all(action='SELECT')
     for ob in bpy.context.selected_objects:
@@ -257,13 +270,11 @@ def main():
                 bpy.ops.mesh.vertex_color_remove()
         bpy.ops.object.shade_smooth()
 
-    #Start Convertion
     if ProcessTextures:
         print_v(" --> Starting texture processing")
         findResources()
         print_v(" --> Finished texture processing")
 
-        # AutoTexture
         print_v(" --> Starting auto-texturing")
         for i in bpy.data.materials:
             mat = (str(i).split('<bpy_struct, Material("')[1]).split('") at ')[0]
@@ -384,6 +395,7 @@ def main():
 
                             MatCache.append(mat.name)
                     del texlist
+    fixMaterials()
     print_v(" --> Done!")
 #  ╭───────╮
 #  │ Start │
