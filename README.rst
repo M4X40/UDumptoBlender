@@ -4,8 +4,8 @@ UModeltoBlender
 Fantastic Importer for Unreal Engine dumps to Blender 3D v3
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-:Script Version:    1.5.0
-:Blender Version:   3.x.x
+:Script Version:    1.6.0
+:Blender Version:   3.y.z
 :Custom UDump:      https://github.com/ZenCreates/Fnaf99GatorGames
 :Download Page:     https://github.com/M4X40/UModeltoBlender/releases/latest
 :Authors:           Max S. <maxst.marie11@gmail.com>, Zwei <zwei.lmao.mail@gmail.com>
@@ -25,4 +25,4 @@ Formatting + General Blender Knowledge | `zwei <https://github.com/zwei-cool/>`_
 NEWS
 ^^^^
 
-1.5 pogg
+1.6 for material fixes
