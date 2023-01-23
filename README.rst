@@ -8,7 +8,7 @@ Fantastic Importer for Unreal Engine dumps to Blender 3D v3
 :Blender Version:   3.y.z
 :Custom UDump:      https://github.com/ZenCreates/Fnaf99GatorGames
 :Download Page:     https://github.com/M4X40/UDumptoBlender/releases/latest
-:Authors:           Max S. <maxst.marie11@gmail.com>, Zwei <zwei.lmao.mail@gmail.com>
+:Authors:           M4X40, Zwei
 
 
 CREDITS
