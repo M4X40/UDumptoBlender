@@ -10,8 +10,9 @@
 #  │ Settings │
 #  ╰──────────╯
 
-DumpDirectory = "C:\\Users\\maxst\\Downloads\\Debug\\Dump\\"
+DumpDirectory = "C:\\Users\\maxst\\Downloads\\GatorGames\\HW-Maps\\Games\\VentRepair\\Ennard\\Floor1"
 DeleteObjects = True
+ProcessObjects = True # Shade smooth, Enable backface culling, and delete Vertex Colors
 ProcessTextures = True
 TextureExtension = ".png"
 
@@ -19,7 +20,7 @@ TextureExtension = ".png"
 
 Verbose = True
 Warning = True
-Debug = False
+Debug = True
 
 #  ╶─────────────────────────────────────────╴ #
 
@@ -47,28 +48,31 @@ try:
     import cv2
     import wget
 except Exception:
-    subprocess.check_call(
-        [sys.executable, '-m', 'pip', 'install', '--upgrade', '--user', '--no-warn-script-location', 'pip',])
-    subprocess.check_call(
-        [sys.executable, '-m', 'pip', 'install', '--user', 'opencv-python==4.5.3.56',])
-    subprocess.check_call(
-        [sys.executable, '-m', 'pip', 'install', '--upgrade', 'wget',])
     try:
-        import cv2
-        import wget
-    except Exception:
-        shutil.rmtree(f'{os.getenv("APPDATA")}\\Python\\')
-        
         subprocess.check_call(
-            [sys.executable, '-m', 'pip', 'install', '--user', '--upgrade', 'pip',])
+            [sys.executable, '-m', 'pip', 'install', '--upgrade', '--user', '--no-warn-script-location', 'pip',])
         subprocess.check_call(
             [sys.executable, '-m', 'pip', 'install', '--user', 'opencv-python==4.5.3.56',])
         subprocess.check_call(
-        [sys.executable, '-m', 'pip', 'install', '--upgrade', 'wget',])
-
+            [sys.executable, '-m', 'pip', 'install', '--upgrade', 'wget',])
     
-    import cv2
-    import wget
+        import cv2
+        import wget
+    except Exception:
+        try:
+            shutil.rmtree(f'{os.getenv("APPDATA")}\\Python\\')
+            
+            subprocess.check_call(
+                [sys.executable, '-m', 'pip', 'install', '--user', '--upgrade', 'pip',])
+            subprocess.check_call(
+                [sys.executable, '-m', 'pip', 'install', '--user', 'opencv-python==4.5.3.56',])
+            subprocess.check_call(
+            [sys.executable, '-m', 'pip', 'install', '--upgrade', 'wget',])
+            import cv2
+            import wget
+        except Exception:
+            print("Failed to import modules. Continuing without them.")
+
 
 BlendPY = f"{os.getcwd()}\\{os.getcwd()[-3:]}\\"
 
@@ -84,12 +88,27 @@ except Exception:
 #  │ Variables │
 #  ╰───────────╯
 
-SuccessfulObjects = 0
-FailedObjects = 0
-NonImportedObjects = []
 MatCache = []
 PSKObjectCache = {}
 CWD = os.getcwd()
+
+ORMTextureNames = [
+    "OcclusionRoughnessMetallic",
+    "ORM",
+    "HRM",
+    "MTRAO",
+    "MRAO",
+    "HDR"
+]
+DiffuseTextureNames = [
+    "Diffuse",
+    "Albedo",
+    "ALB",
+    "BaseColor"
+]
+
+if not DumpDirectory.endswith("\\"):
+    DumpDirectory = DumpDirectory + "\\"
 
 #  ╶─────────────────────────────────────────╴ #
 
@@ -105,20 +124,38 @@ def removeAll():
         materials.remove(material)
     main()
 
-def print_v(msg):
-    if Verbose:
-        print(msg)
+if Verbose:
+    def print_v(msg):
+        if Verbose:
+            print(msg)
 
-def print_w(msg):
-    if Warning:
-        print(msg)
+if Warning:
+    def print_w(msg):
+        if Warning:
+            print(msg)
 
-def print_d(msg):
-    if Debug:
-        print(f"DEBUG: {msg}")
+if Debug:
+    def print_d(msg):
+        if Debug:
+            print(f"DEBUG: {msg}")
 
 def importMesh(filePath):
     return pskimport(filePath,bpy.context,bReorientBones=True)
+
+if ProcessObjects:
+    def ProcessObject(ob):
+        try:
+            bpy.context.view_layer.objects.active = ob
+            while len(ob.data.vertex_colors) > 0:
+                try:
+                    bpy.ops.geometry.color_attribute_remove()
+                except Exception:
+                    bpy.ops.mesh.vertex_color_remove()
+            bpy.ops.object.shade_smooth()
+            for mat in ob.material_slots:
+                mat.material.use_backface_culling = True
+        except Exception:
+            return
 
 # Fixes NaN Values in mesh
 def fixNan(value):
@@ -128,7 +165,7 @@ def fixNan(value):
         return value
 
 if ProcessTextures:
-    def splitORM(root, file):
+    def splitORM(root, file, type):
         fname = ((file.split(".tga"))[0])
         path = os.path.join(root,fname).replace('\\', r'\\')
         base = os.path.splitext(fname)[0]
@@ -138,14 +175,7 @@ if ProcessTextures:
         blue,green,red = cv2.split(img)
         del blue
 
-        if "OcclusionRoughnessMetallic" in file:
-            name = (base.split("OcclusionRoughnessMetallic"))[0]
-        elif "ORM" in file:
-            name = (base.split("ORM"))[0]
-        elif "HRM" in file:
-            name = (base.split("HRM"))[0]
-        elif "MTRAO" in file:
-            name = (base.split("MTRAO"))[0]
+        name = (base.split(type))[0]
 
         cv2.imwrite(f"{root}\\{name}Roughness.png", red)
         cv2.imwrite(f"{root}\\{name}Metallic.png", green)
@@ -172,12 +202,39 @@ if ProcessTextures:
                     print_w(f'[WARN] --> Error in moving resource to folder: {e}')
 
     def findResources():
-        for root, dirs, files in os.walk(DumpDirectory):
-            for file in files:
-                if file.endswith(".mat") or file.endswith(TextureExtension):
-                    moveFile(root, file)
-                    if "OcclusionRoughnessMetallic" in file or "ORM" in file or "HRM" in file or "MTRAO" in file:
-                        splitORM(f"{DumpDirectory}Resources\\", file)
+        if not os.path.exists(f"{DumpDirectory}Resources\\"):
+            for root, dirs, files in os.walk(f"{DumpDirectory}"):
+                for file in files:
+                    if file.endswith(".mat") or file.endswith(TextureExtension):
+                        moveFile(root, file)
+                        for i in ORMTextureNames:
+                            if i in file:
+                                splitORM(f"{DumpDirectory}Resources\\", file, i)
+    
+    def fixMaterials():
+        try:
+            bpy.ops.object.select_all(action='SELECT')
+            for ob in bpy.context.selected_objects:
+                if not len(ob.material_slots) == 0:
+                    for mat in ob.material_slots:
+                        if mat.name == "WorldGridMaterial" or mat.name == "GRAY":
+                            ob_name = ob.name.split(".")[0]
+                            jsonFileData = json.loads(open(DumpDirectory+"dump.json","r").read())
+                            for ob_data in jsonFileData:
+                                if ob_name in ob_data["path"]:
+                                    mat_name = ob_data["materialName"]
+                                    mat.material = bpy.data.materials.get(mat_name)
+                            print_v(f"Fixed {ob.name}'s materials.")
+                else:
+                    ob_name = ob.name.split(".")[0]
+                    jsonFileData = json.loads(open(DumpDirectory+"dump.json","r").read())
+                    for ob_data in jsonFileData:
+                        if ob_name in ob_data["path"]:
+                            mat_name = ob_data["materialName"]
+                            bpy.ops.object.material_slot_add(bpy.data.materials.get(mat_name))
+            bpy.ops.object.select_all(action='DESELECT')
+        except Exception as e:
+            print_w(f"[WARN] {e}")
 
 def createObject(jsonData):
     objectType = jsonData["type"]
@@ -201,32 +258,6 @@ def createObject(jsonData):
             imported.rotation_euler = (radians(fixNan(rotation["Z"])),radians(fixNan(rotation["X"])*-1),radians(fixNan(rotation["Y"])*-1))
             imported.scale = (fixNan(scale["X"]),fixNan(scale["Y"]),fixNan(scale["Z"]))
 
-def fixMaterials():
-    try:
-        bpy.ops.object.select_all(action='SELECT')
-        for ob in bpy.context.selected_objects:
-            if ob.type == 'MESH' and len(ob.data.polygons) > 0:
-                if not len(ob.material_slots) == 0:
-                    for mat in ob.material_slots:
-                        if mat.name == "WorldGridMaterial":
-                            ob_name = ob.name.split(".")[0]
-                            jsonFileData = json.loads(open(DumpDirectory+"dump.json","r").read())
-                            for ob_data in jsonFileData:
-                                if ob_name in ob_data["path"]:
-                                    mat_name = ob_data["materialName"]
-                                    mat.material = bpy.data.materials.get(mat_name)
-                            print_v(f"Fixed {ob.name}'s materials.")
-                else:
-                    ob_name = ob.name.split(".")[0]
-                    jsonFileData = json.loads(open(DumpDirectory+"dump.json","r").read())
-                    for ob_data in jsonFileData:
-                        if ob_name in ob_data["path"]:
-                            mat_name = ob_data["materialName"]
-                            bpy.ops.object.material_slot_add(bpy.data.materials.get(mat_name))
-        bpy.ops.object.select_all(action='DESELECT')
-    except Exception as e:
-        print_w(f"[WARN] {e}")
-
 
 #  ╶─────────────────────────────────────────╴ #
 
@@ -240,7 +271,12 @@ def main():
     listLen = len(jsonFileData)
     for i in range(0,listLen):
         createObject(jsonFileData[i])
-        print_v("Imported object "+str(i)+"/"+str(listLen))
+        ProcessObject(bpy.context.active_object)
+        try:
+            obj = ((str(bpy.context.active_object)).split('<bpy_struct, Object(\"')[1]).split('\") at')[0]
+        except Exception:
+            obj = bpy.context.active_object
+        print_v(f"Imported object {obj} | {str(i + 1)}/{str(listLen)}")
 
     try:
         bpy.ops.object.select_all(action='DESELECT')
@@ -257,18 +293,6 @@ def main():
         print_v(" --> Found and deleted InvertedSphere")
     except Exception:
         print_v(f" --> InvertedSphere Not Found, Continuing.")
-
-    print_v(" --> Enabling nodes, shade smoothing, and deleting V-Colors")
-    bpy.ops.object.select_all(action='SELECT')
-    for ob in bpy.context.selected_objects:
-        ob.active_material.use_nodes = True
-        bpy.context.view_layer.objects.active = ob
-        while len(ob.data.vertex_colors) > 0:
-            try:
-                bpy.ops.geometry.color_attribute_remove()
-            except Exception:
-                bpy.ops.mesh.vertex_color_remove()
-        bpy.ops.object.shade_smooth()
 
     if ProcessTextures:
         print_v(" --> Starting texture processing")
@@ -292,54 +316,62 @@ def main():
                     with open(file) as f:
                         for line in f.readlines():
                             if 'Diffuse=' in line:
+                                NextLine = False
                                 texPath = (line.split('Diffuse='))[1]
-                                if '_Roughness' in line:
-                                    texlist['Roughness'] = texPath
-                                    texPath = texPath.split("Roughness")[0]
-                                    texlist['Diffuse'] = (texPath) + "BaseColor"
-                                else:
-                                    texlist["Diffuse"] = texPath
+                                for i in ORMTextureNames:
+                                    if i in line:
+                                        texPath = texPath.split(i)[0]
+                                        texlist['Roughness'] = f"{texPath}Roughness"
+                                        texlist['Metallic'] = f"{texPath}Metallic"
+                                        for d in DiffuseTextureNames:
+                                            if os.path.exists(f"{DumpDirectory}Resources\\{texPath}{d}.png"):
+                                                texlist['Diffuse'] = f"{texPath}{d}"
+                                                NextLine = True
+                                    elif "HDR" in i and not NextLine:
+                                        texlist["Diffuse"] = texPath
                             elif 'Normal=' in line:
                                 texPath = (line.split('Normal='))[1]
                                 texlist["Normal"] = texPath
                             elif 'Roughness=' in line:
                                 texPath = (line.split('Roughness='))[1]
-                                if "OcclusionRoughnessMetallic" in texPath:
-                                    texPath = (texPath.split("OcclusionRoughnessMetallic"))[0]
-                                    texPath = f"{texPath}Roughness"
+                                for i in ORMTextureNames:
+                                    if i in line:
+                                        texPath = (texPath.split(i))[0]
+                                        texPath = f"{texPath}Roughness"
                                 texlist['Roughness'] = texPath
                             elif 'Metallic=' in line:
                                 texPath = (line.split('Metallic='))[1]
-                                if "OcclusionRoughnessMetallic" in texPath:
-                                    texPath = (texPath.split("OcclusionRoughnessMetallic"))[0]
-                                    texPath = f"{texPath}Roughness"
+                                for i in ORMTextureNames:
+                                    if i in line:
+                                        texPath = (texPath.split(i))[0]
+                                        texPath = f"{texPath}Roughness"
                                 texlist['Metallic'] = texPath
                             elif 'Other[0]=' in line:
-                                texPath1 = line.split("Other[0]=")[1]
-                                if 'OcclusionRoughnessMetallic' in line:
-                                    texPath = texPath1.split("OcclusionRoughness")
-                                    texPath = texPath[0] + texPath[1]
-                                    texlist['Metallic'] = texPath
-                                    texPath = texPath1.split("Occlusion")[0] + "Roughness"
-                                    texlist['Roughness'] = texPath
-                                elif '_Metallic' in line:
-                                    texlist['Metallic'] = texPath
-                                elif '_Roughness' in line:
-                                    texlist['Roughness'] = texPath
+                                texPath = line.split("Other[0]=")[1]
+                                for i in ORMTextureNames:
+                                    if i in line:
+                                        split = line.split("Other[0]=")[1]
+                                        texPath = split.split(i)[0]
+                                        texlist['Metallic'] = f"{texPath}Metallic"
+                                        texlist['Roughness'] = f"{texPath}Roughness"
+                                    elif '_Metallic' in line:
+                                        texlist['Metallic'] = texPath
+                                    elif '_Roughness' in line:
+                                        texlist['Roughness'] = texPath
                             elif 'Other[1]=' in line:
-                                if 'OcclusionRoughnessMetallic' in line:
-                                    split = line.split("Other[1]=")[1]
-                                    texPath = split.split("OcclusionRoughness")
-                                    texPath = texPath[0] + texPath[1]
-                                    texlist['Metallic'] = texPath
-                                    texPath = split.split("Occlusion")[0] + "Roughness"
-                                    texlist['Roughness'] = texPath
-                                elif '_Metallic' in line:
-                                    texPath = line.split("Other[1]=")[1]
-                                    texlist['Metallic'] = texPath
-                                elif '_Roughness' in line:
-                                    texPath = line.split("Other[1]=")[1]
-                                    texlist['Roughness'] = texPath
+                                for i in ORMTextureNames:
+                                    if i in line:
+                                        split = line.split("Other[1]=")[1]
+                                        texPath = split.split(i)[0]
+                                        texlist['Metallic'] = f"{texPath}Metallic"
+                                        texlist['Roughness'] = f"{texPath}Roughness"
+                                    elif '_Metallic' in line:
+                                        texPath = line.split("Other[1]=")[1]
+                                        texlist['Metallic'] = texPath
+                                    elif '_Roughness' in line:
+                                        texPath = line.split("Other[1]=")[1]
+                                        texlist['Roughness'] = texPath
+                    
 
                     for mat in bpy.data.materials:
                         if mat.name == base:
@@ -356,7 +388,8 @@ def main():
                                     ColorNode.location = (-400,500)
                                     mat_links.new(ColorNode.outputs["Color"], mat_nodes.get("Principled BSDF").inputs["Base Color"])
                                 except Exception as e:
-                                    print_w(f"[WARN] {e}")
+                                    if not str(e) == ('\'Diffuse\''):
+                                        print_w(f"[WARN] {e} (Diffuse)")
                                 
                                 try:
                                     NormalMap = mat_nodes.new("ShaderNodeNormalMap")
@@ -369,7 +402,8 @@ def main():
                                     mat_links.new(NormalNode.outputs["Color"], NormalMap.inputs["Color"])
                                     mat_links.new(NormalMap.outputs["Normal"], mat_nodes.get("Principled BSDF").inputs["Normal"])
                                 except Exception as e:
-                                    print_w(f"[WARN] {e}")
+                                    if not str(e) == ('\'Normal\''):
+                                        print_w(f"[WARN] {e} (Normal)")
                                 
                                 try:
                                     if "Roughness" in texlist.keys():
@@ -380,7 +414,8 @@ def main():
                                         RoughNode.location = (-300,0)
                                         mat_links.new(RoughNode.outputs["Color"], mat_nodes.get("Principled BSDF").inputs["Roughness"])
                                 except Exception as e:
-                                    print_w(f"[WARN] {e}")
+                                    if not str(e) == ('\'Roughness\''):
+                                        print_w(f"[WARN] {e} (Roughness)")
                                 
                                 try:
                                     if "Metallic" in texlist.keys():
@@ -391,7 +426,8 @@ def main():
                                         MetalNode.location = (-600,200)
                                         mat_links.new(MetalNode.outputs["Color"], mat_nodes.get("Principled BSDF").inputs["Metallic"])
                                 except Exception as e:
-                                    print_w(f"[WARN] {e}")
+                                    if not str(e) == ('\'Metallic\''):
+                                        print_w(f"[WARN] {e} (Metallic)")
 
                             MatCache.append(mat.name)
                     del texlist
