@@ -24,4 +24,4 @@ Formatting + General Blender Knowledge | `zwei <https://github.com/zwei-cool/>`_
 NEWS
 ^^^^
 
-1.6 for material fixes
+Working on this script again. Releases will be behind main until i do enough to make a release
