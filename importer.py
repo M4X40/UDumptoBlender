@@ -456,9 +456,10 @@ def main():
                                         texPath = line.split("Other[1]=")[1]
                                         texlist['Roughness'] = texPath
 
+                    global MatCache
+                    print_d(f"Matcache after: {MatCache}")
                     for mat in bpy.data.materials:
                         if mat.name is base:
-                            global MatCache
                             if mat.name not in MatCache:
                                 mat.use_nodes = True
                                 mat_nodes = mat.node_tree.nodes
@@ -547,6 +548,7 @@ def main():
     fixMaterials()
     print_v(" --> Done!")
     print_d("Time: %.4f sec" % (time.time() - time_start))
+    print_d(f"Matcache after: {MatCache}")
 #  ╭───────╮
 #  │ Start │
 #  ╰───────╯
