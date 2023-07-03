@@ -10,7 +10,7 @@
 #  │ Settings │
 #  ╰──────────╯
 
-DumpDirectory = 'C:\\Users\\maxst\\Downloads\\GatorGames\\HW-Maps\\Games\\VentRepair\\Ennard\\Floor1'
+DumpDirectory = 'G:\\Blender\\GatorGames\\HWR\\HW-Maps\\Games\\VentRepair\\Ennard\\Floor1'
 DeleteObjects = True
 ProcessObjects = True # Shade smooth, Enable backface culling, and delete Vertex Colors
 ProcessTextures = True
@@ -68,15 +68,16 @@ except:
             import cv2
         except:
             print("Failed to import cv2. Continuing without it.")
+
 try:
-    import wget
+    import requests
 except:
     try:
         subprocess.check_call(
             [bpy.app.binary_path_python, '-m', 'pip', 'install', '--upgrade', '--user', '--no-warn-script-location', 'pip',])
         subprocess.check_call(
-            [bpy.app.binary_path_python, '-m', 'pip', 'install', '--upgrade', 'wget',])
-        import wget
+            [bpy.app.binary_path_python, '-m', 'pip', 'install', '--upgrade', 'requests',])
+        import requests
     except:
         try:
             shutil.rmtree(f'{os.getenv("APPDATA")}\\Python\\')
@@ -84,10 +85,10 @@ except:
             subprocess.check_call(
                 [bpy.app.binary_path_python, '-m', 'pip', 'install', '--user', '--upgrade', 'pip',])
             subprocess.check_call(
-                [bpy.app.binary_path_python, '-m', 'pip', 'install', '--upgrade', 'wget',])
-            import wget
+                [bpy.app.binary_path_python, '-m', 'pip', 'install', '--upgrade', 'requests',])
+            import requests
         except:
-            print("Failed to import wget. Continuing without it.")
+            print("Failed to import requests. Continuing without it.")
 
 try:
     from PIL import Image
@@ -113,14 +114,21 @@ except:
 
 BlendPY = f"{os.getcwd()}\\{os.getcwd()[-3:]}\\"
 
-try:
-    from io_import_scene_unreal_psa_psk_280 import pskimport
-except:
-    wget.download(
-        'https://raw.githubusercontent.com/Befzz/blender3d_import_psk_psa/master/addons/io_import_scene_unreal_psa_psk_280.py', 
-        f'{BlendPY}scripts\\addons\\io_import_scene_unreal_psa_psk_280.py'
-    )
-    from io_import_scene_unreal_psa_psk_280 import pskimport
+if ProcessObjects:
+    try:
+        from io_import_scene_unreal_psa_psk_280 import pskimport
+    except:
+        response = requests.get('https://raw.githubusercontent.com/Befzz/blender3d_import_psk_psa/master/addons/io_import_scene_unreal_psa_psk_280.py')
+        
+        if response.status_code == 200:
+            with open(f'{BlendPY}scripts\\addons\\io_import_scene_unreal_psa_psk_280.py', 'w', encoding='utf-8') as file:
+                file.write(response.text)
+            try:
+                from io_import_scene_unreal_psa_psk_280 import pskimport
+            except:
+                print("Failed to import pskimport. Continuing without it.")
+        else:
+            print("Failed to import pskimport. Continuing without it.")
 
 #  ╶─────────────────────────────────────────╴ #
 
@@ -218,31 +226,34 @@ if ProcessTextures:
         os.chdir(CWD)
 
     def splitORM(root, file, type):
-        fname = ((file.split(TextureExtension))[0])
-        path = os.path.join(root,fname).replace('\\\\', r'\\')
-        base = os.path.splitext(fname)[0]
-
-        img = cv2.imread(f'{path}.png')
-
-        blue,green,red = cv2.split(img)
-        del blue
-
-        name = (base.split(type))[0]
-        if "Occlusion" in name:
-            name.split("Occlusion")
-            try:
-                name = name[0] + name[1]
-            except:
-                name = name[0]
-
-        cv2.imwrite(f"{root}\\{name}Roughness.png", red)
-        cv2.imwrite(f"{root}\\{name}Metallic.png", green)
         try:
-            os.remove(f"{path}{TextureExtension}")
-        except:
-            pass
-        
-        print_v(f" <-- --> Split {fname} into Roughness and Metallic textures!")
+            fname = ((file.split(TextureExtension))[0])
+            path = os.path.join(root,fname).replace('\\\\', r'\\')
+            base = os.path.splitext(fname)[0]
+
+            img = cv2.imread(f'{path}.png')
+
+            blue,green,red = cv2.split(img)
+            del blue
+
+            name = (base.split(type))[0]
+            if "Occlusion" in name:
+                name.split("Occlusion")
+                try:
+                    name = name[0] + name[1]
+                except:
+                    name = name[0]
+
+            cv2.imwrite(f"{root}\\{name}Roughness.png", red)
+            cv2.imwrite(f"{root}\\{name}Metallic.png", green)
+            try:
+                os.remove(f"{path}{TextureExtension}")
+            except:
+                pass
+            
+            print_v(f" <-- --> Split {fname} into Roughness and Metallic textures!")
+        except Exception as e:
+            print_w(f" <-- --> Could not split {fname}. May cause problems in texturing process ({e})")
 
     def moveFile(root, file):
 
@@ -340,20 +351,22 @@ def createObject(jsonData):
 #  ╰───────────────╯
 
 def main():
-    
-    jsonFileData = json.loads((open(DumpDirectory+"dump.json",'r').read())) 
-    listLen = len(jsonFileData)
-    for i in range(0,listLen):
-        createObject(jsonFileData[i])
-        ProcessObject(bpy.context.active_object)
-        try:
-            obj = ((str(bpy.context.active_object)).split('<bpy_struct, Object(\"')[1]).split('\") at')[0]
-        except:
-            obj = bpy.context.active_object
-        print_v(f"Imported object {obj} | {str(i + 1)}/{str(listLen)}")
 
-    remove('SM_SkySphere.mo')
-    remove('MOD_InvertedSphere.mo')
+    if ProcessObjects:
+    
+        jsonFileData = json.loads((open(DumpDirectory+"dump.json",'r').read())) 
+        listLen = len(jsonFileData)
+        for i in range(0,listLen):
+            createObject(jsonFileData[i])
+            ProcessObject(bpy.context.active_object)
+            try:
+                obj = ((str(bpy.context.active_object)).split('<bpy_struct, Object(\"')[1]).split('\") at')[0]
+            except:
+                obj = bpy.context.active_object
+            print_v(f"Imported object {obj} | {str(i + 1)}/{str(listLen)}")
+
+        remove('SM_SkySphere.mo')
+        remove('MOD_InvertedSphere.mo')
 
     if ProcessTextures:
         print_v(" --> Starting texture processing")
